@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { auth } from "@/lib/auth"
+import { getToken } from "next-auth/jwt"
 
-export async function middleware(request: NextRequest) {
-  const session = await auth()
+export async function proxy(request: NextRequest) {
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET,
+  })
 
-  const isLoggedIn = !!session?.user
+  const isLoggedIn = !!token
   const isAuthPage = request.nextUrl.pathname.startsWith("/login")
 
   if (isAuthPage) {
@@ -16,7 +19,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!isLoggedIn) {
-    return NextResponse.redirect(new URL("/login", request.url))
+    const loginUrl = new URL("/login", request.url)
+    loginUrl.searchParams.set("callbackUrl", request.nextUrl.pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   return NextResponse.next()

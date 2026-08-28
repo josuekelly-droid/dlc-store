@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma skills sync || exit 0",
     "db:seed": "tsx prisma/seed.ts"
   },
   "prisma": {
