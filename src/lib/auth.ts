@@ -4,6 +4,7 @@ import { compare } from "bcryptjs"
 import { prisma } from "./prisma"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
   },
@@ -41,6 +42,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return {
           id: admin.id,
           email: admin.email,
+          name: admin.email,
         }
       },
     }),
@@ -48,13 +50,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id
+        token.sub = user.id
+        token.email = user.email
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string
+        session.user.id = token.sub as string
+        session.user.email = token.email as string
       }
       return session
     },

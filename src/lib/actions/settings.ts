@@ -11,26 +11,24 @@ export async function changePassword(data: {
 }) {
   const session = await auth()
 
-  if (!session?.user?.id) {
+  if (!session?.user?.email) {
     throw new Error("Non autorisé")
   }
 
   const admin = await prisma.admin.findUnique({
-    where: { id: session.user.id },
+    where: { email: session.user.email },
   })
 
   if (!admin) {
     throw new Error("Administrateur introuvable")
   }
 
-  // Vérifier l'ancien mot de passe
   const isValid = await compare(data.currentPassword, admin.passwordHash)
 
   if (!isValid) {
     throw new Error("Mot de passe actuel incorrect")
   }
 
-  // Hasher le nouveau mot de passe
   const newHash = await hash(data.newPassword, 12)
 
   await prisma.admin.update({
@@ -47,19 +45,18 @@ export async function changePassword(data: {
 export async function updateEmail(data: { newEmail: string }) {
   const session = await auth()
 
-  if (!session?.user?.id) {
+  if (!session?.user?.email) {
     throw new Error("Non autorisé")
   }
 
   const admin = await prisma.admin.findUnique({
-    where: { id: session.user.id },
+    where: { email: session.user.email },
   })
 
   if (!admin) {
     throw new Error("Administrateur introuvable")
   }
 
-  // Vérifier que l'email n'est pas déjà utilisé
   const existingAdmin = await prisma.admin.findUnique({
     where: { email: data.newEmail },
   })
