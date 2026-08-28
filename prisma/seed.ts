@@ -4,8 +4,8 @@ import { hash } from "bcryptjs"
 const prisma = new PrismaClient()
 
 async function main() {
-  const email = "dolceakplogan01@gmail.com"
-  const password = "DolceAKPLOGAN2001@@"
+  const email = "HDHDHDHDHDHDDHDHDHHDHD"
+  const password = "DHDHDHDHDHHDHDHDH"
 
   const passwordHash = await hash(password, 12)
 
