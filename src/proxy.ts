@@ -3,9 +3,16 @@ import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
 export async function proxy(request: NextRequest) {
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+
+  if (!secret) {
+    console.error("AUTH_SECRET ou NEXTAUTH_SECRET n'est pas défini")
+    return NextResponse.next()
+  }
+
   const token = await getToken({
     req: request,
-    secret: process.env.AUTH_SECRET,
+    secret,
   })
 
   const isLoggedIn = !!token
