@@ -6,20 +6,12 @@ import { redirect } from "next/navigation"
 export default async function SettingsPage() {
   const session = await auth()
 
-  // Utiliser token.sub ou session.user.id
-  const adminId = session?.user?.id || session?.user?.email
-
-  if (!adminId) {
+  if (!session?.user?.email) {
     redirect("/login")
   }
 
-  const admin = await prisma.admin.findFirst({
-    where: {
-      OR: [
-        { id: session?.user?.id || "" },
-        { email: session?.user?.email || "" },
-      ],
-    },
+  const admin = await prisma.admin.findUnique({
+    where: { email: session.user.email },
   })
 
   if (!admin) {

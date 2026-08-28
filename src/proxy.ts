@@ -3,22 +3,16 @@ import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
 export async function proxy(request: NextRequest) {
-  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
-
-  if (!secret) {
-    console.error("AUTH_SECRET ou NEXTAUTH_SECRET n'est pas défini")
-    return NextResponse.next()
-  }
-
   const token = await getToken({
     req: request,
-    secret,
+    secret: process.env.AUTH_SECRET,
+    secureCookie: process.env.NODE_ENV === "production",
   })
 
   const isLoggedIn = !!token
-  const isAuthPage = request.nextUrl.pathname.startsWith("/login")
+  const pathname = request.nextUrl.pathname
 
-  if (isAuthPage) {
+  if (pathname === "/login") {
     if (isLoggedIn) {
       return NextResponse.redirect(new URL("/dashboard", request.url))
     }
@@ -26,9 +20,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!isLoggedIn) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("callbackUrl", request.nextUrl.pathname)
-    return NextResponse.redirect(loginUrl)
+    return NextResponse.redirect(new URL("/login", request.url))
   }
 
   return NextResponse.next()
