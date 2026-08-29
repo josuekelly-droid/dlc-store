@@ -36,8 +36,10 @@ export function ProductsList({ products }: { products: Product[] }) {
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  // ✅ Ajout : état local pour mise à jour instantanée
+  const [localProducts, setLocalProducts] = useState<Product[]>(products)
 
-  const filteredProducts = products.filter(
+  const filteredProducts = localProducts.filter(
     (product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.category?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -50,10 +52,18 @@ export function ProductsList({ products }: { products: Product[] }) {
     setIsDeleting(true)
     try {
       await deleteProduct(id)
-      router.refresh()
+      
+      // ✅ Fermer la modal immédiatement
       setDeleteConfirm(null)
+      
+      // ✅ Supprimer le produit de l'état local instantanément
+      setLocalProducts((prev) => prev.filter((p) => p.id !== id))
+      
+      // ✅ Rafraîchir la page pour synchroniser avec le serveur
+      router.refresh()
     } catch (err) {
       console.error("Erreur suppression:", err)
+      alert("Erreur lors de la suppression du produit")
     } finally {
       setIsDeleting(false)
     }

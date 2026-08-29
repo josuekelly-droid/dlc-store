@@ -30,7 +30,9 @@ export async function createProduct(data: {
     },
   })
 
+  // ✅ Ajouter le revalidatePath pour le dashboard
   revalidatePath("/products")
+  revalidatePath("/dashboard")
   return product
 }
 
@@ -84,7 +86,9 @@ export async function updateProduct(
     }
   }
 
+  // ✅ Ajouter le revalidatePath pour le dashboard
   revalidatePath("/products")
+  revalidatePath("/dashboard")
   return product
 }
 
@@ -93,7 +97,9 @@ export async function deleteProduct(id: string) {
     where: { id },
   })
 
+  // ✅ Ajouter le revalidatePath pour le dashboard
   revalidatePath("/products")
+  revalidatePath("/dashboard")
 }
 
 export async function deleteVariant(id: string) {
@@ -101,5 +107,7 @@ export async function deleteVariant(id: string) {
     where: { id },
   })
 
+  // ✅ Ajouter le revalidatePath pour le dashboard
   revalidatePath("/products")
+  revalidatePath("/dashboard")
 }
