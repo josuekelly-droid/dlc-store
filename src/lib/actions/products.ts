@@ -30,9 +30,11 @@ export async function createProduct(data: {
     },
   })
 
-  // ✅ Ajouter le revalidatePath pour le dashboard
+  // ✅ Revalider TOUTES les pages concernées
   revalidatePath("/products")
   revalidatePath("/dashboard")
+  revalidatePath("/sales/new")
+  
   return product
 }
 
@@ -49,7 +51,6 @@ export async function updateProduct(
 ) {
   const validated = productSchema.parse(data)
 
-  // Mettre à jour le produit
   const product = await prisma.product.update({
     where: { id },
     data: {
@@ -61,10 +62,8 @@ export async function updateProduct(
     },
   })
 
-  // Gérer les variantes
   for (const variant of data.variants) {
     if (variant.id) {
-      // Mise à jour
       await prisma.variant.update({
         where: { id: variant.id },
         data: {
@@ -74,7 +73,6 @@ export async function updateProduct(
         },
       })
     } else {
-      // Création
       await prisma.variant.create({
         data: {
           productId: id,
@@ -86,9 +84,11 @@ export async function updateProduct(
     }
   }
 
-  // ✅ Ajouter le revalidatePath pour le dashboard
+  // ✅ Revalider TOUTES les pages concernées
   revalidatePath("/products")
   revalidatePath("/dashboard")
+  revalidatePath("/sales/new")
+  
   return product
 }
 
@@ -97,9 +97,10 @@ export async function deleteProduct(id: string) {
     where: { id },
   })
 
-  // ✅ Ajouter le revalidatePath pour le dashboard
+  // ✅ Revalider TOUTES les pages concernées
   revalidatePath("/products")
   revalidatePath("/dashboard")
+  revalidatePath("/sales/new")
 }
 
 export async function deleteVariant(id: string) {
@@ -107,7 +108,7 @@ export async function deleteVariant(id: string) {
     where: { id },
   })
 
-  // ✅ Ajouter le revalidatePath pour le dashboard
   revalidatePath("/products")
   revalidatePath("/dashboard")
+  revalidatePath("/sales/new")
 }
