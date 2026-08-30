@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 
@@ -29,10 +29,16 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "DLC Store" }],
   creator: "DLC Store",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/logo/logo-dlc-store.png",
     shortcut: "/logo/logo-dlc-store.png",
     apple: "/logo/logo-dlc-store.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "DLC Store",
   },
   openGraph: {
     title: "DLC Store - Gestion de stock & Multi-services",
@@ -46,6 +52,13 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#f472b6",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({
