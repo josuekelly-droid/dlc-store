@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache"
 export async function createSale(data: {
   clientName: string
   clientPhone: string
-  clientAddress: string | null
+  clientAddress: string | null 
   items: {
     variantId: string
     quantity: number
