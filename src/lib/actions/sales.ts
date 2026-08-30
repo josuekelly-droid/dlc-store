@@ -50,3 +50,33 @@ export async function createSale(data: {
   revalidatePath("/products")
   revalidatePath("/dashboard")
 }
+
+// ✅ Nouvelle fonction : Supprimer une vente
+export async function deleteSale(id: string) {
+  // Récupérer la vente pour restaurer le stock
+  const sale = await prisma.sale.findUnique({
+    where: { id },
+  })
+
+  if (sale) {
+    // Restaurer le stock (réincrémenter la quantité vendue)
+    await prisma.variant.update({
+      where: { id: sale.variantId },
+      data: {
+        stock: {
+          increment: sale.quantity,
+        },
+      },
+    })
+
+    // Supprimer la vente
+    await prisma.sale.delete({
+      where: { id },
+    })
+  }
+
+  // Revalider toutes les pages concernées
+  revalidatePath("/sales")
+  revalidatePath("/products")
+  revalidatePath("/dashboard")
+}
