@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createProduct } from "@/lib/actions/products"
+import { useUploadThing } from "@/lib/uploadthing"
 import {
   Plus,
   Trash2,
@@ -12,7 +13,7 @@ import {
   Upload,
   X,
   AlertCircle,
-  Image as ImageIcon,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -28,7 +29,7 @@ export function ProductForm() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-  
+
   // Champs du produit
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -36,12 +37,25 @@ export function ProductForm() {
   const [category, setCategory] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [imagePreview, setImagePreview] = useState("")
-  const [isUploading, setIsUploading] = useState(false)
-  
+
   // Variantes
   const [variants, setVariants] = useState<VariantInput[]>([
     { color: "", size: "", stock: 0 },
   ])
+
+  // ✅ UploadThing hook
+  const { startUpload, isUploading } = useUploadThing("productImage", {
+    onClientUploadComplete: (res) => {
+      if (res?.[0]) {
+        const url = res[0].ufsUrl || res[0].url
+        setImageUrl(url)
+        setImagePreview(url)
+      }
+    },
+    onUploadError: (err) => {
+      setError(`Erreur d'upload : ${err.message}`)
+    },
+  })
 
   const addVariant = () => {
     setVariants([...variants, { color: "", size: "", stock: 0 }])
@@ -62,27 +76,20 @@ export function ProductForm() {
     setVariants(updatedVariants)
   }
 
+  // ✅ Remplacer le base64 par UploadThing
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setIsUploading(true)
     setError("")
 
-    try {
-      // Simuler un upload (à remplacer par UploadThing)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const base64 = reader.result as string
-        setImageUrl(base64)
-        setImagePreview(base64)
-        setIsUploading(false)
-      }
-      reader.readAsDataURL(file)
-    } catch (err) {
-      setError("Erreur lors de l'upload de l'image")
-      setIsUploading(false)
+    // Vérification taille (4MB max)
+    if (file.size > 4 * 1024 * 1024) {
+      setError("L'image doit faire moins de 4MB")
+      return
     }
+
+    await startUpload([file])
   }
 
   const removeImage = () => {
@@ -223,7 +230,7 @@ export function ProductForm() {
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Image du produit
           </label>
-          
+
           {imagePreview ? (
             <div className="relative inline-block">
               <img
@@ -242,16 +249,27 @@ export function ProductForm() {
             </div>
           ) : (
             <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-pink-200 rounded-xl p-6 sm:p-8 text-center cursor-pointer hover:border-pink-400 transition-colors"
+              onClick={() => !isUploading && fileInputRef.current?.click()}
+              className={`border-2 border-dashed border-pink-200 rounded-xl p-6 sm:p-8 text-center cursor-pointer hover:border-pink-400 transition-colors ${
+                isUploading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
-              <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-pink-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">
-                Cliquez pour uploader une image
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                PNG, JPG jusqu'à 4MB
-              </p>
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 text-pink-400 mx-auto mb-2 animate-spin" />
+                  <p className="text-sm text-pink-600 font-medium">Upload en cours...</p>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-pink-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">
+                    Cliquez pour uploader une image
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    PNG, JPG jusqu'à 4MB
+                  </p>
+                </>
+              )}
             </div>
           )}
 
@@ -260,12 +278,9 @@ export function ProductForm() {
             type="file"
             accept="image/*"
             onChange={handleImageUpload}
+            disabled={isUploading}
             className="hidden"
           />
-
-          {isUploading && (
-            <p className="text-sm text-pink-600 mt-2">Upload en cours...</p>
-          )}
         </div>
       </div>
 
@@ -325,7 +340,9 @@ export function ProductForm() {
                     type="number"
                     min="0"
                     value={variant.stock}
-                    onChange={(e) => updateVariant(index, "stock", parseInt(e.target.value) || 0)}
+                    onChange={(e) =>
+                      updateVariant(index, "stock", parseInt(e.target.value) || 0)
+                    }
                     placeholder="0"
                     className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
                   />
@@ -365,12 +382,12 @@ export function ProductForm() {
         </Link>
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isUploading}
           className="inline-flex items-center justify-center gap-2 bg-pink-500 hover:bg-pink-600 text-white font-medium px-6 py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-200 text-sm sm:text-base flex-1 sm:flex-none order-1 sm:order-2"
         >
           {isLoading ? (
             <>
-              <span className="animate-spin">⟳</span>
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
               Création...
             </>
           ) : (
