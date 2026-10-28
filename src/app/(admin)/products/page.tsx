@@ -4,17 +4,66 @@ import { ProductsList } from "@/components/products/products-list"
 import Link from "next/link"
 import { Plus } from "lucide-react"
 
-export default async function ProductsPage() {
+// ✅ Force le rendu dynamique (pas de pré-rendu ISR avec cache lourd)
+export const dynamic = "force-dynamic"
+
+const ITEMS_PER_PAGE = 10
+
+interface ProductsPageProps {
+  searchParams: Promise<{ page?: string; search?: string }>
+}
+
+export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+  const params = await searchParams
+  const currentPage = Math.max(1, parseInt(params.page || "1", 10))
+  const searchQuery = params.search?.trim() || ""
+
+  // ✅ Filtre de recherche côté serveur
+  const whereClause = searchQuery
+    ? {
+        OR: [
+          { name: { contains: searchQuery, mode: "insensitive" as const } },
+          { category: { contains: searchQuery, mode: "insensitive" as const } },
+        ],
+      }
+    : {}
+
+  // ✅ Compter le total pour la pagination
+  const totalProducts = await prisma.product.count({ where: whereClause })
+  const totalPages = Math.max(1, Math.ceil(totalProducts / ITEMS_PER_PAGE))
+
+  // ✅ Récupérer UNIQUEMENT la page courante avec select optimisé
   const products = await prisma.product.findMany({
-    include: {
-      variants: true,
+    where: whereClause,
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      price: true,
+      category: true,
+      imageUrl: true,
+      createdAt: true,
+      updatedAt: true,
+      // ✅ Ne charger que les infos essentielles des variantes
+      variants: {
+        select: {
+          id: true,
+          color: true,
+          size: true,
+          stock: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",
     },
+    skip: (currentPage - 1) * ITEMS_PER_PAGE,
+    take: ITEMS_PER_PAGE,
   })
 
-  // Convertir les Decimal en string pour les Client Components
+  // Sérialiser les Decimal et Date
   const serializedProducts = products.map((product) => ({
     ...product,
     price: product.price.toString(),
@@ -34,7 +83,7 @@ export default async function ProductsPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Produits</h1>
           <p className="text-sm sm:text-base text-gray-500 mt-1">
-            Gérez vos produits et leurs variantes
+            {totalProducts} produit{totalProducts > 1 ? "s" : ""} au total
           </p>
         </div>
         <Link
@@ -48,7 +97,13 @@ export default async function ProductsPage() {
 
       {/* Liste des produits */}
       <Suspense fallback={<ProductsSkeleton />}>
-        <ProductsList products={serializedProducts} />
+        <ProductsList
+          products={serializedProducts}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalProducts={totalProducts}
+          searchQuery={searchQuery}
+        />
       </Suspense>
     </div>
   )
