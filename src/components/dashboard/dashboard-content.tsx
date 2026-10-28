@@ -5,8 +5,14 @@ import { SalesChart } from "./sales-chart"
 import { TopProducts } from "./top-products"
 import { CategoryChart } from "./category-chart"
 import { RecentSales } from "./recent-sales"
+import { MonthlyRevenue } from "./monthly-revenue"
 
 export async function DashboardContent() {
+  // Dates pour le mois en cours
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const startOfLast12Months = new Date(now.getFullYear(), now.getMonth() - 11, 1)
+
   // Récupération des statistiques
   const [
     totalProducts,
@@ -19,6 +25,8 @@ export async function DashboardContent() {
     salesForChart,
     topProducts,
     categoryStats,
+    currentMonthRevenue,
+    last12MonthsSales,
   ] = await Promise.all([
     // Compteurs
     prisma.product.count(),
@@ -26,7 +34,7 @@ export async function DashboardContent() {
     prisma.variant.aggregate({ _sum: { stock: true } }),
     prisma.sale.count(),
     prisma.sale.aggregate({ _sum: { totalPrice: true } }),
-    
+
     // Stock faible (≤ 5)
     prisma.variant.findMany({
       where: { stock: { lte: 5 } },
@@ -34,7 +42,7 @@ export async function DashboardContent() {
       orderBy: { stock: "asc" },
       take: 10,
     }),
-    
+
     // Dernières ventes
     prisma.sale.findMany({
       take: 5,
@@ -45,7 +53,7 @@ export async function DashboardContent() {
         },
       },
     }),
-    
+
     // Ventes des 7 derniers jours pour le graphique
     prisma.sale.findMany({
       where: {
@@ -56,7 +64,7 @@ export async function DashboardContent() {
         variant: { include: { product: true } },
       },
     }),
-    
+
     // Top produits
     prisma.sale.groupBy({
       by: ["variantId"],
@@ -80,11 +88,30 @@ export async function DashboardContent() {
       }
       return result
     }),
-    
+
     // Répartition par catégorie
     prisma.product.groupBy({
       by: ["category"],
       _count: { id: true },
+    }),
+
+    // ✅ CA du mois en cours
+    prisma.sale.aggregate({
+      where: {
+        soldAt: { gte: startOfMonth },
+      },
+      _sum: { totalPrice: true },
+    }),
+
+    // ✅ Ventes des 12 derniers mois (pour l'historique)
+    prisma.sale.findMany({
+      where: {
+        soldAt: { gte: startOfLast12Months },
+      },
+      select: {
+        soldAt: true,
+        totalPrice: true,
+      },
     }),
   ])
 
@@ -93,6 +120,43 @@ export async function DashboardContent() {
   const totalRevenueValue = totalRevenue._sum.totalPrice
     ? parseFloat(totalRevenue._sum.totalPrice.toString())
     : 0
+
+  // ✅ CA du mois en cours
+  const currentMonthRevenueValue = currentMonthRevenue._sum.totalPrice
+    ? parseFloat(currentMonthRevenue._sum.totalPrice.toString())
+    : 0
+
+  // ✅ Calcul de l'historique des 12 derniers mois
+  const monthlyRevenuesMap = new Map<string, number>()
+
+  // Initialiser les 12 mois à 0
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    monthlyRevenuesMap.set(key, 0)
+  }
+
+  // Remplir avec les données réelles
+  for (const sale of last12MonthsSales) {
+    const d = new Date(sale.soldAt)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    if (monthlyRevenuesMap.has(key)) {
+      const current = monthlyRevenuesMap.get(key) || 0
+      monthlyRevenuesMap.set(key, current + parseFloat(sale.totalPrice.toString()))
+    }
+  }
+
+  // Construire le tableau final (du plus récent au plus ancien)
+  const monthlyRevenues = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    return {
+      month: d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }),
+      monthKey: key,
+      revenue: monthlyRevenuesMap.get(key) || 0,
+      isCurrent: i === 0,
+    }
+  })
 
   // Sérialiser les données
   const serializedLowStock = lowStockVariants.map((v) => ({
@@ -134,13 +198,15 @@ export async function DashboardContent() {
 
   return (
     <div className="space-y-6">
-      {/* Cartes de statistiques */}
+      {/* Cartes de statistiques avec CA mensuel */}
       <StatsCards
         totalProducts={totalProducts}
         totalVariants={totalVariants}
         totalStock={totalStockValue}
         totalSales={totalSales}
         totalRevenue={totalRevenueValue}
+        currentMonthRevenue={currentMonthRevenueValue}
+        monthlyRevenues={monthlyRevenues}
         lowStockCount={lowStockVariants.length}
       />
 
@@ -152,6 +218,9 @@ export async function DashboardContent() {
         <SalesChart data={serializedSalesForChart} />
         <TopProducts products={serializedTopProducts} />
       </div>
+
+      {/* ✅ Historique CA mensuel */}
+      <MonthlyRevenue data={monthlyRevenues} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <CategoryChart categories={serializedCategoryStats} />
