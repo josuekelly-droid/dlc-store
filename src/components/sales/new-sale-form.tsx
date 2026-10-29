@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createSale } from "@/lib/actions/sales"
+import { createOrder } from "@/lib/actions/sales"
 import {
   User,
   Phone,
@@ -104,6 +104,7 @@ export function NewSaleForm({ products }: { products: Product[] }) {
   }
 
   const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -123,7 +124,8 @@ export function NewSaleForm({ products }: { products: Product[] }) {
         return
       }
 
-      await createSale({
+      // ✅ Utiliser createOrder au lieu de createSale
+      const order = await createOrder({
         clientName: clientName.trim(),
         clientPhone: clientPhone.trim(),
         clientAddress: clientAddress.trim() || null,
@@ -134,10 +136,12 @@ export function NewSaleForm({ products }: { products: Product[] }) {
         })),
       })
 
-      router.push("/sales")
+      // ✅ Rediriger vers la facture de la commande créée
+      router.push(`/sales/${order.id}/invoice`)
       router.refresh()
-    } catch (err) {
-      setError("Erreur lors de l'enregistrement de la vente")
+    } catch (err: any) {
+      // ✅ Afficher le vrai message d'erreur (stock insuffisant, etc.)
+      setError(err?.message || "Erreur lors de l'enregistrement de la commande")
       setIsLoading(false)
     }
   }
@@ -260,13 +264,25 @@ export function NewSaleForm({ products }: { products: Product[] }) {
         {/* Panier */}
         {cart.length > 0 && (
           <div className="mt-4 space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700">Panier</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700">Panier</h3>
+              <span className="text-xs text-gray-500">
+                {cart.length} article{cart.length > 1 ? "s" : ""} • {totalItems} unité
+                {totalItems > 1 ? "s" : ""}
+              </span>
+            </div>
             {cart.map((item) => (
-              <div key={item.variantId} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+              <div
+                key={item.variantId}
+                className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
+              >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{item.productName}</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {item.productName}
+                  </p>
                   <p className="text-xs text-gray-500">
-                    {item.color} - {item.size} × {item.quantity} = {item.price * item.quantity} FCFA
+                    {item.color} - {item.size} × {item.quantity} ={" "}
+                    {(item.price * item.quantity).toLocaleString()} FCFA
                   </p>
                 </div>
                 <button
@@ -279,9 +295,11 @@ export function NewSaleForm({ products }: { products: Product[] }) {
                 </button>
               </div>
             ))}
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Total :</p>
-              <p className="text-2xl font-bold text-pink-600">{totalAmount} FCFA</p>
+            <div className="text-right bg-pink-50 rounded-lg p-3">
+              <p className="text-sm text-gray-600">Total de la commande</p>
+              <p className="text-2xl font-bold text-pink-600">
+                {totalAmount.toLocaleString()} FCFA
+              </p>
             </div>
           </div>
         )}
@@ -309,10 +327,15 @@ export function NewSaleForm({ products }: { products: Product[] }) {
           disabled={isLoading}
           className="inline-flex items-center justify-center gap-2 bg-pink-500 hover:bg-pink-600 text-white font-medium px-6 py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-200 text-sm sm:text-base flex-1 sm:flex-none order-1 sm:order-2"
         >
-          {isLoading ? "Enregistrement..." : (
+          {isLoading ? (
+            <>
+              <span className="animate-spin">⟳</span>
+              Enregistrement...
+            </>
+          ) : (
             <>
               <Save className="w-4 h-4 sm:w-5 sm:h-5" />
-              Enregistrer la vente
+              Enregistrer la commande
             </>
           )}
         </button>

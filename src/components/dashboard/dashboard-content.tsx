@@ -18,10 +18,10 @@ export async function DashboardContent() {
     totalProducts,
     totalVariants,
     totalStock,
-    totalSales,
+    totalOrders,
     totalRevenue,
     lowStockVariants,
-    recentSales,
+    recentOrders,
     salesForChart,
     topProducts,
     categoryStats,
@@ -32,7 +32,7 @@ export async function DashboardContent() {
     prisma.product.count(),
     prisma.variant.count(),
     prisma.variant.aggregate({ _sum: { stock: true } }),
-    prisma.sale.count(),
+    prisma.order.count(), // ✅ Compter les commandes
     prisma.sale.aggregate({ _sum: { totalPrice: true } }),
 
     // Stock faible (≤ 5)
@@ -43,13 +43,17 @@ export async function DashboardContent() {
       take: 10,
     }),
 
-    // Dernières ventes
-    prisma.sale.findMany({
+    // ✅ Dernières commandes (au lieu des derniers articles)
+    prisma.order.findMany({
       take: 5,
-      orderBy: { soldAt: "desc" },
+      orderBy: { createdAt: "desc" },
       include: {
-        variant: {
-          include: { product: true },
+        items: {
+          include: {
+            variant: {
+              include: { product: true },
+            },
+          },
         },
       },
     }),
@@ -66,28 +70,32 @@ export async function DashboardContent() {
     }),
 
     // Top produits
-    prisma.sale.groupBy({
-      by: ["variantId"],
-      _sum: { quantity: true },
-      orderBy: { _sum: { quantity: "desc" } },
-      take: 5,
-    }).then(async (grouped) => {
-      const result = []
-      for (const g of grouped) {
-        const variant = await prisma.variant.findUnique({
-          where: { id: g.variantId },
-          include: { product: true },
-        })
-        if (variant) {
-          result.push({
-            name: variant.product.name,
-            quantity: g._sum.quantity || 0,
-            revenue: (g._sum.quantity || 0) * parseFloat(variant.product.price.toString()),
+    prisma.sale
+      .groupBy({
+        by: ["variantId"],
+        _sum: { quantity: true },
+        orderBy: { _sum: { quantity: "desc" } },
+        take: 5,
+      })
+      .then(async (grouped) => {
+        const result = []
+        for (const g of grouped) {
+          const variant = await prisma.variant.findUnique({
+            where: { id: g.variantId },
+            include: { product: true },
           })
+          if (variant) {
+            result.push({
+              name: variant.product.name,
+              quantity: g._sum.quantity || 0,
+              revenue:
+                (g._sum.quantity || 0) *
+                parseFloat(variant.product.price.toString()),
+            })
+          }
         }
-      }
-      return result
-    }),
+        return result
+      }),
 
     // Répartition par catégorie
     prisma.product.groupBy({
@@ -142,7 +150,10 @@ export async function DashboardContent() {
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
     if (monthlyRevenuesMap.has(key)) {
       const current = monthlyRevenuesMap.get(key) || 0
-      monthlyRevenuesMap.set(key, current + parseFloat(sale.totalPrice.toString()))
+      monthlyRevenuesMap.set(
+        key,
+        current + parseFloat(sale.totalPrice.toString())
+      )
     }
   }
 
@@ -167,15 +178,20 @@ export async function DashboardContent() {
     productName: v.product.name,
   }))
 
-  const serializedRecentSales = recentSales.map((sale) => ({
-    id: sale.id,
-    quantity: sale.quantity,
-    totalPrice: sale.totalPrice.toString(),
-    soldAt: sale.soldAt.toISOString(),
-    clientName: sale.clientName,
-    productName: sale.variant.product.name,
-    color: sale.variant.color,
-    size: sale.variant.size,
+  // ✅ Sérialiser les commandes récentes
+  const serializedRecentOrders = recentOrders.map((order) => ({
+    id: order.id,
+    orderNumber: order.orderNumber,
+    clientName: order.clientName,
+    itemCount: order.itemCount,
+    totalAmount: order.totalAmount.toString(),
+    createdAt: order.createdAt.toISOString(),
+    // Résumé des articles (max 2 affichés)
+    itemsSummary: order.items
+      .slice(0, 2)
+      .map((item) => item.variant.product.name)
+      .join(", "),
+    hasMoreItems: order.items.length > 2,
   }))
 
   const serializedSalesForChart = salesForChart.map((sale) => ({
@@ -203,7 +219,7 @@ export async function DashboardContent() {
         totalProducts={totalProducts}
         totalVariants={totalVariants}
         totalStock={totalStockValue}
-        totalSales={totalSales}
+        totalSales={totalOrders}
         totalRevenue={totalRevenueValue}
         currentMonthRevenue={currentMonthRevenueValue}
         monthlyRevenues={monthlyRevenues}
@@ -224,7 +240,7 @@ export async function DashboardContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <CategoryChart categories={serializedCategoryStats} />
-        <RecentSales sales={serializedRecentSales} />
+        <RecentSales sales={serializedRecentOrders} />
       </div>
     </div>
   )

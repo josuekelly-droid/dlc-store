@@ -42,21 +42,36 @@ model Variant {
   @@index([productId])
 }
 
-model Sale {
-  id          String   @id @default(cuid())
-  variantId   String
-  quantity    Int
-  totalPrice  Decimal  @db.Decimal(10, 2)
-  soldAt      DateTime @default(now())
-  
-  // Informations client
-  clientName   String
-  clientPhone  String
+model Order {
+  id            String   @id @default(cuid())
+  orderNumber   String   @unique
+  clientName    String
+  clientPhone   String
   clientAddress String?
-  
-  variant     Variant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  totalAmount   Decimal  @db.Decimal(10, 2)
+  itemCount     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  items         Sale[]
 
+  @@index([clientName])
+  @@index([clientPhone])
+  @@index([createdAt])
+}
+
+model Sale {
+  id         String   @id @default(cuid())
+  orderId    String
+  variantId  String
+  quantity   Int
+  unitPrice  Decimal  @db.Decimal(10, 2)
+  totalPrice Decimal  @db.Decimal(10, 2)
+  soldAt     DateTime @default(now())
+
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant    Variant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
   @@index([variantId])
   @@index([soldAt])
-  @@index([clientName])
 }

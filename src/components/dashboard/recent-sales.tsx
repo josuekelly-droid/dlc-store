@@ -1,20 +1,20 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { ShoppingCart, Eye } from "lucide-react"
+import { ShoppingCart } from "lucide-react"
 
-interface RecentSale {
+interface RecentOrder {
   id: string
-  quantity: number
-  totalPrice: string
-  soldAt: string
+  orderNumber: string
   clientName: string
-  productName: string
-  color: string
-  size: string
+  itemCount: number
+  totalAmount: string
+  createdAt: string
+  itemsSummary: string
+  hasMoreItems: boolean
 }
 
-export function RecentSales({ sales }: { sales: RecentSale[] }) {
+export function RecentSales({ sales }: { sales: RecentOrder[] }) {
   const router = useRouter()
 
   const formatDate = (dateString: string) => {
@@ -32,7 +32,7 @@ export function RecentSales({ sales }: { sales: RecentSale[] }) {
         <div className="flex items-center gap-2">
           <ShoppingCart className="w-5 h-5 text-pink-600" />
           <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-            Dernières ventes
+            Dernières commandes
           </h2>
         </div>
       </div>
@@ -40,7 +40,7 @@ export function RecentSales({ sales }: { sales: RecentSale[] }) {
       {sales.length === 0 ? (
         <div className="text-center py-8">
           <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Aucune vente</p>
+          <p className="text-sm text-gray-500">Aucune commande</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -59,15 +59,18 @@ export function RecentSales({ sales }: { sales: RecentSale[] }) {
                     {sale.clientName}
                   </p>
                   <p className="text-xs text-gray-500 truncate">
-                    {sale.productName} - {sale.color} {sale.size}
+                    {sale.orderNumber} • {sale.itemCount} article
+                    {sale.itemCount > 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
               <div className="text-right ml-2 flex-shrink-0">
                 <p className="text-sm font-semibold text-gray-900">
-                  {parseFloat(sale.totalPrice).toLocaleString()} FCFA
+                  {parseFloat(sale.totalAmount).toLocaleString()} FCFA
                 </p>
-                <p className="text-xs text-gray-400">{formatDate(sale.soldAt)}</p>
+                <p className="text-xs text-gray-400">
+                  {formatDate(sale.createdAt)}
+                </p>
               </div>
             </div>
           ))}
