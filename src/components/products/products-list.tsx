@@ -59,7 +59,6 @@ export function ProductsList({
   const totalStock = (product: Product) =>
     product.variants.reduce((sum, v) => sum + v.stock, 0)
 
-  // ✅ Recherche côté serveur avec navigation
   const handleSearch = (value: string) => {
     setSearchTerm(value)
     const params = new URLSearchParams()
@@ -70,7 +69,6 @@ export function ProductsList({
     })
   }
 
-  // ✅ Navigation entre les pages
   const goToPage = (page: number) => {
     const params = new URLSearchParams()
     if (searchTerm.trim()) params.set("search", searchTerm.trim())
@@ -179,15 +177,17 @@ export function ProductsList({
                   <tr className="border-b border-pink-50 hover:bg-pink-50/50 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        {product.imageUrl && !product.imageUrl.startsWith("data:") ? (
+                        {/* ✅ Image en petit carré - supporte URL ET base64 */}
+                        {product.imageUrl ? (
                           <img
                             src={product.imageUrl}
                             alt={product.name}
-                            className="w-10 h-10 rounded-lg object-cover"
+                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-pink-100"
                             loading="lazy"
+                            decoding="async"
                           />
                         ) : (
-                          <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+                          <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
                             <Package className="w-5 h-5 text-pink-600" />
                           </div>
                         )}
@@ -307,16 +307,18 @@ export function ProductsList({
           localProducts.map((product) => (
             <div key={product.id} className="bg-white rounded-2xl p-4 shadow-sm">
               <div className="flex items-start gap-3">
-                {product.imageUrl && !product.imageUrl.startsWith("data:") ? (
+                {/* ✅ Image en petit carré mobile - supporte URL ET base64 */}
+                {product.imageUrl ? (
                   <img
                     src={product.imageUrl}
                     alt={product.name}
-                    className="w-16 h-16 rounded-xl object-cover"
+                    className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-pink-100"
                     loading="lazy"
+                    decoding="async"
                   />
                 ) : (
-                  <div className="w-16 h-16 bg-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Package className="w-8 h-8 text-pink-600" />
+                  <div className="w-14 h-14 bg-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Package className="w-7 h-7 text-pink-600" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -397,7 +399,7 @@ export function ProductsList({
         )}
       </div>
 
-      {/* ✅ Pagination */}
+      {/* Pagination */}
       {totalProducts > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl p-4 shadow-sm">
           <p className="text-xs sm:text-sm text-gray-500">

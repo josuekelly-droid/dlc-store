@@ -8,12 +8,10 @@ import { RecentSales } from "./recent-sales"
 import { MonthlyRevenue } from "./monthly-revenue"
 
 export async function DashboardContent() {
-  // Dates pour le mois en cours
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const startOfLast12Months = new Date(now.getFullYear(), now.getMonth() - 11, 1)
 
-  // Récupération des statistiques
   const [
     totalProducts,
     totalVariants,
@@ -28,14 +26,13 @@ export async function DashboardContent() {
     currentMonthRevenue,
     last12MonthsSales,
   ] = await Promise.all([
-    // Compteurs
     prisma.product.count(),
     prisma.variant.count(),
     prisma.variant.aggregate({ _sum: { stock: true } }),
-    prisma.order.count(), // ✅ Compter les commandes
+    prisma.order.count(),
     prisma.sale.aggregate({ _sum: { totalPrice: true } }),
 
-    // Stock faible (≤ 5)
+    // Stock faible
     prisma.variant.findMany({
       where: { stock: { lte: 5 } },
       include: { product: true },
@@ -43,7 +40,7 @@ export async function DashboardContent() {
       take: 10,
     }),
 
-    // ✅ Dernières commandes (au lieu des derniers articles)
+    // Dernières commandes
     prisma.order.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
@@ -58,7 +55,7 @@ export async function DashboardContent() {
       },
     }),
 
-    // Ventes des 7 derniers jours pour le graphique
+    // Ventes des 7 derniers jours
     prisma.sale.findMany({
       where: {
         soldAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
@@ -91,6 +88,7 @@ export async function DashboardContent() {
               revenue:
                 (g._sum.quantity || 0) *
                 parseFloat(variant.product.price.toString()),
+              imageUrl: variant.product.imageUrl, // ✅ AJOUT
             })
           }
         }
@@ -103,48 +101,35 @@ export async function DashboardContent() {
       _count: { id: true },
     }),
 
-    // ✅ CA du mois en cours
+    // CA du mois en cours
     prisma.sale.aggregate({
-      where: {
-        soldAt: { gte: startOfMonth },
-      },
+      where: { soldAt: { gte: startOfMonth } },
       _sum: { totalPrice: true },
     }),
 
-    // ✅ Ventes des 12 derniers mois (pour l'historique)
+    // Ventes des 12 derniers mois
     prisma.sale.findMany({
-      where: {
-        soldAt: { gte: startOfLast12Months },
-      },
-      select: {
-        soldAt: true,
-        totalPrice: true,
-      },
+      where: { soldAt: { gte: startOfLast12Months } },
+      select: { soldAt: true, totalPrice: true },
     }),
   ])
 
-  // Conversion des Decimal en number
   const totalStockValue = totalStock._sum.stock ?? 0
   const totalRevenueValue = totalRevenue._sum.totalPrice
     ? parseFloat(totalRevenue._sum.totalPrice.toString())
     : 0
 
-  // ✅ CA du mois en cours
   const currentMonthRevenueValue = currentMonthRevenue._sum.totalPrice
     ? parseFloat(currentMonthRevenue._sum.totalPrice.toString())
     : 0
 
-  // ✅ Calcul de l'historique des 12 derniers mois
+  // Historique 12 mois
   const monthlyRevenuesMap = new Map<string, number>()
-
-  // Initialiser les 12 mois à 0
   for (let i = 0; i < 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
     monthlyRevenuesMap.set(key, 0)
   }
-
-  // Remplir avec les données réelles
   for (const sale of last12MonthsSales) {
     const d = new Date(sale.soldAt)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
@@ -156,8 +141,6 @@ export async function DashboardContent() {
       )
     }
   }
-
-  // Construire le tableau final (du plus récent au plus ancien)
   const monthlyRevenues = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
@@ -169,16 +152,16 @@ export async function DashboardContent() {
     }
   })
 
-  // Sérialiser les données
+  // ✅ Sérialisations avec images
   const serializedLowStock = lowStockVariants.map((v) => ({
     id: v.id,
     color: v.color,
     size: v.size,
     stock: v.stock,
     productName: v.product.name,
+    imageUrl: v.product.imageUrl, // ✅ AJOUT
   }))
 
-  // ✅ Sérialiser les commandes récentes
   const serializedRecentOrders = recentOrders.map((order) => ({
     id: order.id,
     orderNumber: order.orderNumber,
@@ -186,12 +169,8 @@ export async function DashboardContent() {
     itemCount: order.itemCount,
     totalAmount: order.totalAmount.toString(),
     createdAt: order.createdAt.toISOString(),
-    // Résumé des articles (max 2 affichés)
-    itemsSummary: order.items
-      .slice(0, 2)
-      .map((item) => item.variant.product.name)
-      .join(", "),
-    hasMoreItems: order.items.length > 2,
+    // ✅ Image du premier article de la commande
+    firstItemImage: order.items[0]?.variant.product.imageUrl || null,
   }))
 
   const serializedSalesForChart = salesForChart.map((sale) => ({
@@ -203,6 +182,7 @@ export async function DashboardContent() {
     name: p.name,
     quantity: p.quantity,
     revenue: p.revenue,
+    imageUrl: p.imageUrl, // ✅ AJOUT
   }))
 
   const serializedCategoryStats = categoryStats
@@ -214,7 +194,6 @@ export async function DashboardContent() {
 
   return (
     <div className="space-y-6">
-      {/* Cartes de statistiques avec CA mensuel */}
       <StatsCards
         totalProducts={totalProducts}
         totalVariants={totalVariants}
@@ -226,16 +205,13 @@ export async function DashboardContent() {
         lowStockCount={lowStockVariants.length}
       />
 
-      {/* Stock faible */}
       <LowStock variants={serializedLowStock} />
 
-      {/* Graphiques */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SalesChart data={serializedSalesForChart} />
         <TopProducts products={serializedTopProducts} />
       </div>
 
-      {/* ✅ Historique CA mensuel */}
       <MonthlyRevenue data={monthlyRevenues} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { ShoppingCart } from "lucide-react"
+import { ShoppingCart, Package } from "lucide-react"
 
 interface RecentOrder {
   id: string
@@ -10,8 +10,7 @@ interface RecentOrder {
   itemCount: number
   totalAmount: string
   createdAt: string
-  itemsSummary: string
-  hasMoreItems: boolean
+  firstItemImage: string | null // ✅ Image du premier article
 }
 
 export function RecentSales({ sales }: { sales: RecentOrder[] }) {
@@ -51,9 +50,20 @@ export function RecentSales({ sales }: { sales: RecentOrder[] }) {
               onClick={() => router.push(`/sales/${sale.id}/invoice`)}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <ShoppingCart className="w-4 h-4 text-pink-600" />
-                </div>
+                {/* ✅ Image du premier article de la commande */}
+                {sale.firstItemImage ? (
+                  <img
+                    src={sale.firstItemImage}
+                    alt={sale.clientName}
+                    className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-pink-100"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Package className="w-5 h-5 text-pink-600" />
+                  </div>
+                )}
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
                     {sale.clientName}
