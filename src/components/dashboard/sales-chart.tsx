@@ -51,17 +51,31 @@ export function SalesChart({ data }: SalesChartProps) {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#fce7f3" />
-              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#9ca3af" />
-              <YAxis
-                tick={{ fontSize: 12 }}
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 11 }}
                 stroke="#9ca3af"
-                tickFormatter={(value) => `${value} F`}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                stroke="#9ca3af"
+                width={45}
+                tickFormatter={(value) => {
+                  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`
+                  if (value >= 1000) return `${(value / 1000).toFixed(0)}k`
+                  return `${value}`
+                }}
               />
               <Tooltip
-                formatter={(value) => [`${Number(value).toLocaleString()} FCFA`, "Total"]}
+                formatter={(value) => [
+                  `${Number(value).toLocaleString()} FCFA`,
+                  "Total",
+                ]}
                 contentStyle={{
                   borderRadius: "12px",
                   border: "1px solid #fce7f3",
+                  fontSize: "12px",
                 }}
               />
               <Area
