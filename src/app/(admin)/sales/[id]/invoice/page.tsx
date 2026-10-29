@@ -11,41 +11,51 @@ interface InvoicePageProps {
 export default async function InvoicePage({ params }: InvoicePageProps) {
   const { id } = await params
 
-  const sale = await prisma.sale.findUnique({
+  // ✅ Charger la commande avec TOUS ses articles
+  const order = await prisma.order.findUnique({
     where: { id },
     include: {
-      variant: {
+      items: {
         include: {
-          product: true,
+          variant: {
+            include: {
+              product: true,
+            },
+          },
         },
       },
     },
   })
 
-  if (!sale) {
+  if (!order) {
     notFound()
   }
 
   // Sérialiser
-  const serializedSale = {
-    id: sale.id,
-    quantity: sale.quantity,
-    totalPrice: sale.totalPrice.toString(),
-    soldAt: sale.soldAt.toISOString(),
-    clientName: sale.clientName,
-    clientPhone: sale.clientPhone,
-    clientAddress: sale.clientAddress,
-    variant: {
-      color: sale.variant.color,
-      size: sale.variant.size,
-      product: {
-        name: sale.variant.product.name,
-        price: sale.variant.product.price.toString(),
-        description: sale.variant.product.description,
-        category: sale.variant.product.category,
+  const serializedOrder = {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    clientName: order.clientName,
+    clientPhone: order.clientPhone,
+    clientAddress: order.clientAddress,
+    totalAmount: order.totalAmount.toString(),
+    itemCount: order.itemCount,
+    createdAt: order.createdAt.toISOString(),
+    items: order.items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice.toString(),
+      totalPrice: item.totalPrice.toString(),
+      variant: {
+        color: item.variant.color,
+        size: item.variant.size,
+        product: {
+          name: item.variant.product.name,
+          category: item.variant.product.category,
+        },
       },
-    },
+    })),
   }
 
-  return <Invoice sale={serializedSale} />
+  return <Invoice order={serializedOrder} />
 }

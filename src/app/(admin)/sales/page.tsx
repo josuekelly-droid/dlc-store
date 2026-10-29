@@ -4,40 +4,50 @@ import { SalesList } from "@/components/sales/sales-list"
 import Link from "next/link"
 import { Plus } from "lucide-react"
 
+export const dynamic = "force-dynamic"
+
 export default async function SalesPage() {
-  const sales = await prisma.sale.findMany({
+  // ✅ Récupérer les COMMANDES (pas les ventes individuelles)
+  const orders = await prisma.order.findMany({
     include: {
-      variant: {
+      items: {
         include: {
-          product: true,
+          variant: {
+            include: {
+              product: true,
+            },
+          },
         },
       },
     },
     orderBy: {
-      soldAt: "desc",
+      createdAt: "desc",
     },
   })
 
-  // Sérialiser les données
-  const serializedSales = sales.map((sale) => ({
-    id: sale.id,
-    quantity: sale.quantity,
-    totalPrice: sale.totalPrice.toString(),
-    soldAt: sale.soldAt.toISOString(),
-    clientName: sale.clientName,
-    clientPhone: sale.clientPhone,
-    clientAddress: sale.clientAddress,
-    variant: {
-      id: sale.variant.id,
-      color: sale.variant.color,
-      size: sale.variant.size,
-      stock: sale.variant.stock,
-      product: {
-        id: sale.variant.product.id,
-        name: sale.variant.product.name,
-        price: sale.variant.product.price.toString(),
+  // Sérialiser
+  const serializedOrders = orders.map((order) => ({
+    id: order.id,
+    orderNumber: order.orderNumber,
+    clientName: order.clientName,
+    clientPhone: order.clientPhone,
+    clientAddress: order.clientAddress,
+    totalAmount: order.totalAmount.toString(),
+    itemCount: order.itemCount,
+    createdAt: order.createdAt.toISOString(),
+    items: order.items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice.toString(),
+      totalPrice: item.totalPrice.toString(),
+      variant: {
+        color: item.variant.color,
+        size: item.variant.size,
+        product: {
+          name: item.variant.product.name,
+        },
       },
-    },
+    })),
   }))
 
   return (
@@ -47,7 +57,7 @@ export default async function SalesPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Ventes</h1>
           <p className="text-sm sm:text-base text-gray-500 mt-1">
-            Gérez vos ventes et commandes clients
+            {orders.length} commande{orders.length > 1 ? "s" : ""} enregistrée{orders.length > 1 ? "s" : ""}
           </p>
         </div>
         <Link
@@ -59,9 +69,9 @@ export default async function SalesPage() {
         </Link>
       </div>
 
-      {/* Liste des ventes */}
+      {/* Liste des commandes */}
       <Suspense fallback={<SalesSkeleton />}>
-        <SalesList sales={serializedSales} />
+        <SalesList orders={serializedOrders} />
       </Suspense>
     </div>
   )
