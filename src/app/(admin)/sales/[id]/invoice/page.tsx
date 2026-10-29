@@ -52,6 +52,7 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
         product: {
           name: item.variant.product.name,
           category: item.variant.product.category,
+          imageUrl: item.variant.product.imageUrl, // ✅ AJOUT
         },
       },
     })),

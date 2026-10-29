@@ -23,6 +23,7 @@ interface OrderItem {
     product: {
       name: string
       category: string | null
+      imageUrl: string | null // ✅ Ajout
     }
   }
 }
@@ -102,7 +103,9 @@ export function Invoice({ order }: InvoiceProps) {
                 className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-xl object-cover bg-white p-0.5 sm:p-1"
               />
               <div>
-                <h1 className="text-lg sm:text-2xl md:text-3xl font-bold">DLC Store</h1>
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-bold">
+                  DLC Store
+                </h1>
                 <p className="text-pink-100 text-xs sm:text-sm mt-0.5 sm:mt-1">
                   Vente de sacs et accessoires
                 </p>
@@ -114,7 +117,9 @@ export function Invoice({ order }: InvoiceProps) {
             </div>
             <div className="text-center sm:text-right">
               <p className="text-base sm:text-lg font-semibold">FACTURE</p>
-              <p className="text-pink-100 text-xs sm:text-sm">{order.orderNumber}</p>
+              <p className="text-pink-100 text-xs sm:text-sm">
+                {order.orderNumber}
+              </p>
             </div>
           </div>
         </div>
@@ -154,7 +159,7 @@ export function Invoice({ order }: InvoiceProps) {
             </div>
           </div>
 
-          {/* Mobile : liste des articles */}
+          {/* ✅ Mobile : liste des articles avec image */}
           <div className="sm:hidden space-y-2">
             <h3 className="text-sm font-semibold text-gray-700">
               Articles ({order.itemCount})
@@ -164,11 +169,31 @@ export function Invoice({ order }: InvoiceProps) {
                 key={item.id}
                 className="border border-pink-100 rounded-xl overflow-hidden"
               >
-                <div className="bg-pink-50 p-3 flex items-center gap-2">
-                  <Package className="w-4 h-4 text-pink-600" />
-                  <p className="text-sm font-medium text-gray-900">
-                    {item.variant.product.name}
-                  </p>
+                {/* En-tête de l'article avec image */}
+                <div className="bg-pink-50 p-3 flex items-center gap-2.5">
+                  {item.variant.product.imageUrl ? (
+                    <img
+                      src={item.variant.product.imageUrl}
+                      alt={item.variant.product.name}
+                      className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-pink-200"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Package className="w-5 h-5 text-pink-600" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {item.variant.product.name}
+                    </p>
+                    {item.variant.product.category && (
+                      <p className="text-xs text-gray-500">
+                        {item.variant.product.category}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="p-3 space-y-1.5 text-sm">
                   <p className="text-xs text-gray-500">
@@ -176,7 +201,9 @@ export function Invoice({ order }: InvoiceProps) {
                   </p>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Quantité</span>
-                    <span className="font-medium text-gray-900">{item.quantity}</span>
+                    <span className="font-medium text-gray-900">
+                      {item.quantity}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Prix unitaire</span>
@@ -195,7 +222,7 @@ export function Invoice({ order }: InvoiceProps) {
             ))}
           </div>
 
-          {/* Desktop : tableau des articles */}
+          {/* ✅ Desktop : tableau des articles avec image */}
           <div className="hidden sm:block border border-pink-100 rounded-xl overflow-hidden">
             <table className="w-full">
               <thead className="bg-pink-50">
@@ -221,8 +248,21 @@ export function Invoice({ order }: InvoiceProps) {
                 {order.items.map((item) => (
                   <tr key={item.id} className="border-t border-pink-50">
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-pink-600" />
+                      <div className="flex items-center gap-3">
+                        {/* ✅ Image dans la colonne Produit */}
+                        {item.variant.product.imageUrl ? (
+                          <img
+                            src={item.variant.product.imageUrl}
+                            alt={item.variant.product.name}
+                            className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-pink-100"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Package className="w-5 h-5 text-pink-600" />
+                          </div>
+                        )}
                         <div>
                           <p className="font-medium text-gray-900">
                             {item.variant.product.name}
@@ -258,7 +298,8 @@ export function Invoice({ order }: InvoiceProps) {
             <div className="w-full sm:w-64 bg-pink-50 rounded-xl p-3 sm:p-4">
               <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                 <span className="text-xs sm:text-sm text-gray-600">
-                  Sous-total ({order.itemCount} article{order.itemCount > 1 ? "s" : ""})
+                  Sous-total ({order.itemCount} article
+                  {order.itemCount > 1 ? "s" : ""})
                 </span>
                 <span className="text-xs sm:text-sm text-gray-900">
                   {totalPrice.toLocaleString()} FCFA
@@ -281,9 +322,11 @@ export function Invoice({ order }: InvoiceProps) {
 
           {/* Pied de page */}
           <div className="border-t border-pink-100 pt-4 sm:pt-6 text-center">
-            <p className="text-xs sm:text-sm text-gray-500">Merci de votre confiance !</p>
+            <p className="text-xs sm:text-sm text-gray-500">
+              Merci de votre confiance !
+            </p>
             <p className="text-xs text-gray-400 mt-0.5 sm:mt-1">
-              DLC Store - +229 01 51 51 29 29 30
+              DLC Store - +229 01 51 51 29 30
             </p>
           </div>
         </div>
