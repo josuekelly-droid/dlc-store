@@ -4,7 +4,7 @@ import { ProductsList } from "@/components/products/products-list"
 import Link from "next/link"
 import { Plus } from "lucide-react"
 
-// ✅ Force le rendu dynamique (pas de pré-rendu ISR avec cache lourd)
+// ✅ Force le rendu dynamique
 export const dynamic = "force-dynamic"
 
 const ITEMS_PER_PAGE = 10
@@ -18,7 +18,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const currentPage = Math.max(1, parseInt(params.page || "1", 10))
   const searchQuery = params.search?.trim() || ""
 
-  // ✅ Filtre de recherche côté serveur
   const whereClause = searchQuery
     ? {
         OR: [
@@ -28,11 +27,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       }
     : {}
 
-  // ✅ Compter le total pour la pagination
   const totalProducts = await prisma.product.count({ where: whereClause })
   const totalPages = Math.max(1, Math.ceil(totalProducts / ITEMS_PER_PAGE))
 
-  // ✅ Récupérer UNIQUEMENT la page courante avec select optimisé
   const products = await prisma.product.findMany({
     where: whereClause,
     select: {
@@ -44,7 +41,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       imageUrl: true,
       createdAt: true,
       updatedAt: true,
-      // ✅ Ne charger que les infos essentielles des variantes
       variants: {
         select: {
           id: true,
@@ -63,7 +59,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     take: ITEMS_PER_PAGE,
   })
 
-  // Sérialiser les Decimal et Date
   const serializedProducts = products.map((product) => ({
     ...product,
     price: product.price.toString(),
@@ -78,7 +73,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   return (
     <div className="space-y-6">
-      {/* En-tête */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Produits</h1>
@@ -95,9 +89,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </Link>
       </div>
 
-      {/* Liste des produits */}
       <Suspense fallback={<ProductsSkeleton />}>
         <ProductsList
+          key={`page-${currentPage}-search-${searchQuery}`} // ✅ CLÉ UNIQUE
           products={serializedProducts}
           currentPage={currentPage}
           totalPages={totalPages}
